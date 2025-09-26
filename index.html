@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sleeper Business Profit Analyzer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 10px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+            background: #fff;
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            margin-top: 10px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 25px;
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+            font-size: 0.9rem;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            background: #fafbfc;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            background: #fff;
+        }
+
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        button {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            min-width: 140px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .export-btn {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+        }
+
+        .export-btn:hover {
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            background: linear-gradient(135deg, #e8f5e9 0%, #f1f8ff 100%);
+            border-radius: 12px;
+            border-left: 4px solid #4CAF50;
+        }
+
+        .result h3 {
+            color: #2e7d32;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 5px;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 12px 15px;
+            border-bottom: 1px solid #e1e5e9;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.5px;
+        }
+
+        tr:hover {
+            background-color: #f8f9ff;
+        }
+
+        .highlight-row {
+            background-color: #fff3cd !important;
+            font-weight: 600;
+        }
+
+        .highlight-row:hover {
+            background-color: #fff3cd !important;
+        }
+
+        /* Mobile Styles */
+        @media (max-width: 768px) {
+            body {
+                padding: 5px;
+            }
+
+            .container {
+                padding: 15px;
+                margin: 5px auto;
+                border-radius: 12px;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+                margin-bottom: 20px;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            input {
+                padding: 14px 15px;
+                font-size: 16px;
+                /* Prevents zoom on iOS */
+            }
+
+            .button-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            button {
+                width: 100%;
+                padding: 14px 20px;
+                font-size: 16px;
+            }
+
+            th,
+            td {
+                padding: 8px 10px;
+                font-size: 0.85rem;
+            }
+
+            th {
+                font-size: 0.75rem;
+            }
+
+            .result {
+                padding: 15px;
+            }
+
+            .result h3 {
+                font-size: 1.1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 12px;
+                margin: 2px;
+                border-radius: 10px;
+            }
+
+            h1 {
+                font-size: 1.3rem;
+            }
+
+            input {
+                padding: 12px;
+            }
+
+            button {
+                padding: 12px 16px;
+            }
+
+            th,
+            td {
+                padding: 6px 8px;
+                font-size: 0.8rem;
+            }
+
+            .result {
+                padding: 12px;
+            }
+
+            .result h3 {
+                font-size: 1rem;
+                margin-bottom: 10px;
+            }
+        }
+
+        /* Landscape mode adjustments for small screens */
+        @media (max-width: 768px) and (orientation: landscape) {
+            .form-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* Loading animation for buttons */
+        .loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        .loading::after {
+            content: "...";
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+
+        @keyframes dots {
+
+            0%,
+            20% {
+                color: rgba(0, 0, 0, 0);
+                text-shadow: 0.25em 0 0 rgba(0, 0, 0, 0), 0.5em 0 0 rgba(0, 0, 0, 0);
+            }
+
+            40% {
+                color: white;
+                text-shadow: 0.25em 0 0 rgba(0, 0, 0, 0), 0.5em 0 0 rgba(0, 0, 0, 0);
+            }
+
+            60% {
+                text-shadow: 0.25em 0 0 white, 0.5em 0 0 rgba(0, 0, 0, 0);
+            }
+
+            80%,
+            100% {
+                text-shadow: 0.25em 0 0 white, 0.5em 0 0 white;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>💰 Business Tool</h1>
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Auction Price per Sleeper (₹)</label>
+                <input type="number" id="auctionPrice" value="" step="0.01">
+            </div>
+
+            <div class="form-group">
+                <label>Quantity (No. of Sleepers)</label>
+                <input type="number" id="quantity" value="" step="1">
+            </div>
+
+            <div class="form-group">
+                <label>GST %</label>
+                <input type="number" id="gst" value="18" step="0.01">
+            </div>
+
+            <div class="form-group">
+                <label>Transportation Cost per Sleeper (₹)</label>
+                <input type="number" id="transport" value="" step="0.01">
+            </div>
+
+            <div class="form-group">
+                <label>Labour Cost per Sleeper (₹)</label>
+                <input type="number" id="labour" value="60" step="0.01">
+            </div>
+
+            <div class="form-group">
+                <label>Land Lease Cost per Sleeper (₹)</label>
+                <input type="number" id="landLease" value="" step="0.01">
+            </div>
+
+            <div class="form-group">
+                <label>Other Fixed Expenses (₹)</label>
+                <input type="number" id="others" value="" step="0.01">
+            </div>
+
+            <div class="form-group">
+                <label>Steel Weight extracted per Sleeper (kg)</label>
+                <input type="number" id="steelWeight" value="14" step="0.01">
+            </div>
+
+            <div class="form-group">
+                <label>Steel Selling Price per kg (₹, with GST)</label>
+                <input type="number" id="steelPriceWithGST" value="44" step="0.01">
+            </div>
+        </div>
+
+        <div class="button-group">
+            <button onclick="calculateProfit()" id="calcBtn">📊 Calculate</button>
+            <button onclick="exportExcel()" class="export-btn">📄 Export Excel</button>
+            <button onclick="exportPDF()" class="export-btn">📋 Export PDF</button>
+        </div>
+
+        <div class="result" id="result"></div>
+    </div>
+
+    <script>
+        function formatNumber(num) { return num.toLocaleString('en-IN', { maximumFractionDigits: 2 }); }
+        let lastCalculation = {};
+
+        function calculateProfit() {
+            const calcBtn = document.getElementById('calcBtn');
+            calcBtn.classList.add('loading');
+            calcBtn.textContent = 'Calculating';
+
+            setTimeout(() => {
+                let auctionPrice = parseFloat(document.getElementById('auctionPrice').value) || 0;
+                let qty = parseFloat(document.getElementById('quantity').value) || 0;
+                let gstRate = parseFloat(document.getElementById('gst').value) / 100 || 0;
+                let labour = parseFloat(document.getElementById('labour').value) || 0;
+                let transportPerSleeper = parseFloat(document.getElementById('transport').value) || 0;
+                let landLeasePerSleeper = parseFloat(document.getElementById('landLease').value) || 0;
+                let transport = transportPerSleeper * qty;
+                let landLease = landLeasePerSleeper * qty;
+                let others = parseFloat(document.getElementById('others').value) || 0;
+                let steelWeight = parseFloat(document.getElementById('steelWeight').value) || 0;
+                let steelPriceWithGST = parseFloat(document.getElementById('steelPriceWithGST').value) || 0;
+
+                if (qty === 0) {
+                    alert('Please enter a valid quantity');
+                    calcBtn.classList.remove('loading');
+                    calcBtn.textContent = '📊 Calculate';
+                    return;
+                }
+
+                let purchaseBase = auctionPrice * qty;
+                let inputGST = purchaseBase * gstRate;
+                let labourCost = labour * qty;
+                let totalCostsExclGST = purchaseBase + labourCost + transport + landLease + others;
+                let perSleeperCost = totalCostsExclGST / qty;
+
+                let totalSteelWeight = steelWeight * qty;
+                let steelPriceBase = steelPriceWithGST / (1 + gstRate);
+                let steelPriceGST = steelPriceWithGST - steelPriceBase;
+                let steelRevenueBase = steelPriceBase * totalSteelWeight;
+                let steelRevenueGST = steelRevenueBase * gstRate;
+
+                let profit = steelRevenueBase - totalCostsExclGST;
+                let profitMarginPercent = (profit / steelRevenueBase) * 100;
+                let profitPerSleeperGST = profit / qty;
+                let netGSTPayable = steelRevenueGST - inputGST;
+                let netProfitAfterGST = profit - netGSTPayable;
+                let profitPerSleeper = netProfitAfterGST / qty;
+
+                lastCalculation = {
+                    purchaseBase, labourCost, transport, landLease, others, totalCostsExclGST, perSleeperCost,
+                    totalSteelWeight, steelPriceBase, steelPriceGST, steelRevenueBase, steelRevenueGST,
+                    profit, profitPerSleeper, profitPerSleeperGST, profitMarginPercent, inputGST, netGSTPayable, netProfitAfterGST
+                };
+
+                document.getElementById('result').innerHTML = `
+    <h3>💵 Cost Breakdown</h3>
+    <div class="table-container">
+    <table>
+    <tr><th>Item</th><th>Total (₹)</th><th>Per Sleeper (₹)</th></tr>
+    <tr><td>Purchase Base</td><td>₹${formatNumber(purchaseBase)}</td><td>₹${formatNumber(auctionPrice)}</td></tr>
+    <tr><td>Labour Cost</td><td>₹${formatNumber(labourCost)}</td><td>₹${formatNumber(labour)}</td></tr>
+    <tr><td>Transportation</td><td>₹${formatNumber(transport)}</td><td>₹${formatNumber(transportPerSleeper)}</td></tr>
+    <tr><td>Land Lease</td><td>₹${formatNumber(landLease)}</td><td>₹${formatNumber(landLeasePerSleeper)}</td></tr>
+    <tr><td>Other Fixed Expenses</td><td>₹${formatNumber(others)}</td><td>₹${formatNumber(others / qty)}</td></tr>
+    <tr class="highlight-row"><td><b>Total Cost (excl. GST)</b></td><td><b>₹${formatNumber(totalCostsExclGST)}</b></td><td><b>₹${formatNumber(perSleeperCost)}</b></td></tr>
+    </table>
+    </div>
+
+    <h3>🏗️ Steel Revenue</h3>
+    <div class="table-container">
+    <table>
+    <tr><th>Item</th><th>Total</th><th>Per kg (₹)</th></tr>
+    <tr><td>Total Steel Extracted</td><td>${formatNumber(totalSteelWeight)} kg</td><td>-</td></tr>
+    <tr><td>Steel Price Base</td><td>₹${formatNumber(steelRevenueBase)}</td><td>₹${formatNumber(steelPriceBase)}</td></tr>
+    <tr><td>Steel Output GST</td><td>₹${formatNumber(steelRevenueGST)}</td><td>₹${formatNumber(steelPriceGST)}</td></tr>
+    <tr class="highlight-row"><td><b>Total Steel Revenue (incl. GST)</b></td><td><b>₹${formatNumber(steelRevenueBase + steelRevenueGST)}</b></td><td>-</td></tr>
+    </table>
+    </div>
+
+    <h3>📈 Profit & GST Summary</h3>
+    <div class="table-container">
+    <table>
+    <tr><td>Profit (excl. GST)</td><td style="color: ${profit >= 0 ? 'green' : 'red'}; font-weight: bold;">₹${formatNumber(profit)}</td></tr>
+    <tr><td>Net Profit After Tax (GST)</td><td style="color: ${netProfitAfterGST >= 0 ? 'green' : 'red'}; font-weight: bold;">₹${formatNumber(netProfitAfterGST)}</td></tr>
+    <tr><td>Profit per Sleeper With GST</td><td>₹${formatNumber(profitPerSleeperGST)}</td></tr>
+    <tr><td>Profit per Sleeper</td><td>₹${formatNumber(profitPerSleeper)}</td></tr>
+    <tr><td>Profit Margin %</td><td style="color: ${profitMarginPercent >= 0 ? 'green' : 'red'}; font-weight: bold;">${profitMarginPercent.toFixed(2)}%</td></tr>
+    <tr><td>Input GST (ITC)</td><td>₹${formatNumber(inputGST)}</td></tr>
+    <tr><td>Output GST</td><td>₹${formatNumber(steelRevenueGST)}</td></tr>
+    <tr><td>Net GST Payable</td><td>₹${formatNumber(netGSTPayable)}</td></tr>
+    </table>
+    </div>
+    `;
+
+                calcBtn.classList.remove('loading');
+                calcBtn.textContent = '📊 Calculate';
+
+                // Smooth scroll to results
+                document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+            }, 500);
+        }
+
+        // Export Excel
+        function exportExcel() {
+            if (!lastCalculation.purchaseBase) {
+                alert("Please Calculate first!");
+                return;
+            }
+
+            try {
+                let qty = parseFloat(document.getElementById('quantity').value);
+                let ws_data = [
+                    ["Sleeper Business Profit Analysis Report"],
+                    ["Generated on: " + new Date().toLocaleDateString()],
+                    [],
+                    ["Item", "Total (₹)", "Per Sleeper / Per kg (₹)"],
+                    ["Purchase Base", lastCalculation.purchaseBase, lastCalculation.purchaseBase / qty],
+                    ["Labour Cost", lastCalculation.labourCost, lastCalculation.labourCost / qty],
+                    ["Transportation", lastCalculation.transport, lastCalculation.transport / qty],
+                    ["Land Lease", lastCalculation.landLease, lastCalculation.landLease / qty],
+                    ["Other Fixed Expenses", lastCalculation.others, lastCalculation.others / qty],
+                    ["Total Cost (excl. GST)", lastCalculation.totalCostsExclGST, lastCalculation.perSleeperCost],
+                    [],
+                    ["Steel Revenue Base", lastCalculation.steelRevenueBase, lastCalculation.steelPriceBase],
+                    ["Steel Output GST", lastCalculation.steelRevenueGST, lastCalculation.steelPriceGST],
+                    [],
+                    ["Profit (excl. GST)", lastCalculation.profit, "-"],
+                    ["Net Profit After Tax (GST)", lastCalculation.netProfitAfterGST, "-"],
+                    ["Profit per Sleeper with GST", lastCalculation.profitPerSleeperGST, "-"],
+                    ["Profit per Sleeper", lastCalculation.profitPerSleeper, "-"],
+                    ["Profit Margin %", lastCalculation.profitMarginPercent + "%", "-"],
+                    ["Input GST (ITC)", lastCalculation.inputGST, "-"],
+                    ["Output GST", lastCalculation.steelRevenueGST, "-"],
+                    ["Net GST Payable", lastCalculation.netGSTPayable, "-"]
+                ];
+                let wb = XLSX.utils.book_new();
+                let ws = XLSX.utils.aoa_to_sheet(ws_data);
+
+                // Auto-fit column widths
+                const range = XLSX.utils.decode_range(ws['!ref']);
+                const wscols = [];
+                for (let C = range.s.c; C <= range.e.c; ++C) {
+                    let max_width = 0;
+                    for (let R = range.s.r; R <= range.e.r; ++R) {
+                        const cell_address = XLSX.utils.encode_cell({ c: C, r: R });
+                        if (!ws[cell_address]) continue;
+                        const cell_text = ws[cell_address].v ? ws[cell_address].v.toString() : '';
+                        max_width = Math.max(max_width, cell_text.length);
+                    }
+                    wscols.push({ width: Math.min(max_width + 2, 50) });
+                }
+                ws['!cols'] = wscols;
+
+                XLSX.utils.book_append_sheet(wb, ws, "Profit Analysis");
+                XLSX.writeFile(wb, "Sleeper_Profit_Report_" + new Date().toISOString().split('T')[0] + ".xlsx");
+            } catch (error) {
+                alert("Error exporting Excel file. Please try again.");
+                console.error(error);
+            }
+        }
+
+        // Export PDF
+        function exportPDF() {
+            if (!lastCalculation.purchaseBase) {
+                alert("Please Calculate first!");
+                return;
+            }
+
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                let y = 20;
+
+                doc.setFontSize(16);
+                doc.setFont(undefined, 'bold');
+                doc.text("Sleeper Business Profit Analysis Report", 20, y);
+                y += 15;
+
+                doc.setFontSize(10);
+                doc.setFont(undefined, 'normal');
+                doc.text("Generated on: " + new Date().toLocaleDateString(), 20, y);
+                y += 15;
+
+                doc.setFontSize(12);
+                const reportData = [
+                    ["Cost Analysis", ""],
+                    ["Purchase Base", "₹" + formatNumber(lastCalculation.purchaseBase)],
+                    ["Labour Cost", "₹" + formatNumber(lastCalculation.labourCost)],
+                    ["Transportation", "₹" + formatNumber(lastCalculation.transport)],
+                    ["Land Lease", "₹" + formatNumber(lastCalculation.landLease)],
+                    ["Other Expenses", "₹" + formatNumber(lastCalculation.others)],
+                    ["Total Cost (excl. GST)", "₹" + formatNumber(lastCalculation.totalCostsExclGST)],
+                    ["", ""],
+                    ["Revenue Analysis", ""],
+                    ["Steel Revenue Base", "₹" + formatNumber(lastCalculation.steelRevenueBase)],
+                    ["Steel Output GST", "₹" + formatNumber(lastCalculation.steelRevenueGST)],
+                    ["", ""],
+                    ["Profit Summary", ""],
+                    ["Profit (excl. GST)", "₹" + formatNumber(lastCalculation.profit)],
+                    ["Net Profit After Tax", "₹" + formatNumber(lastCalculation.netProfitAfterGST)],
+                    ["Profit per Sleeper With GST", "₹" + formatNumber(lastCalculation.profitPerSleeperGST)],
+                    ["Profit per Sleeper", "₹" + formatNumber(lastCalculation.profitPerSleeper)],
+                    ["Profit Margin", lastCalculation.profitMarginPercent.toFixed(2) + "%"],
+                    ["Net GST Payable", "₹" + formatNumber(lastCalculation.netGSTPayable)]
+                ];
+
+                reportData.forEach(([key, val]) => {
+                    if (key === "" && val === "") {
+                        y += 5;
+                        return;
+                    }
+                    if (val === "") {
+                        doc.setFont(undefined, 'bold');
+                        doc.text(key, 20, y);
+                        doc.setFont(undefined, 'normal');
+                    } else {
+                        doc.text(`${key}: ${val}`, 20, y);
+                    }
+                    y += 7;
+
+                    // Add new page if needed
+                    if (y > 270) {
+                        doc.addPage();
+                        y = 20;
+                    }
+                });
+
+                doc.save("Sleeper_Profit_Report_" + new Date().toISOString().split('T')[0] + ".pdf");
+            } catch (error) {
+                alert("Error exporting PDF file. Please try again.");
+                console.error(error);
+            }
+        }
+
+        // Auto-calculate on input change (debounced)
+        // let debounceTimer;
+        // function debounceCalculate() {
+        //     clearTimeout(debounceTimer);
+        //     debounceTimer = setTimeout(() => {
+        //         if (document.getElementById('quantity').value && 
+        //             document.getElementById('auctionPrice').value) {
+        //             calculateProfit();
+        //         }
+        //     }, 1000);
+        // }
+
+        // Add event listeners for auto-calculation
+        // document.addEventListener('DOMContentLoaded', function() {
+        //     const inputs = document.querySelectorAll('input');
+        //     inputs.forEach(input => {
+        //         input.addEventListener('input', debounceCalculate);
+        //     });
+        // });
+
+        // Prevent form submission on Enter key
+        document.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                calculateProfit();
+            }
+        });
+    </script>
+</body>
+
+</html>
