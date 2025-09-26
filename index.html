@@ -432,14 +432,15 @@
                 document.getElementById('result').innerHTML = `
     <h3>💵 Cost Breakdown</h3>
     <div class="table-container">
-    <table>
+   <table>
     <tr><th>Item</th><th>Total (₹)</th><th>Per Sleeper (₹)</th></tr>
     <tr><td>Purchase Base</td><td>₹${formatNumber(purchaseBase)}</td><td>₹${formatNumber(auctionPrice)}</td></tr>
+    <tr><td>Purchase GST</td><td>₹${formatNumber(inputGST)}</td><td>₹${formatNumber(inputGST / qty)}</td></tr>
     <tr><td>Labour Cost</td><td>₹${formatNumber(labourCost)}</td><td>₹${formatNumber(labour)}</td></tr>
     <tr><td>Transportation</td><td>₹${formatNumber(transport)}</td><td>₹${formatNumber(transportPerSleeper)}</td></tr>
     <tr><td>Land Lease</td><td>₹${formatNumber(landLease)}</td><td>₹${formatNumber(landLeasePerSleeper)}</td></tr>
     <tr><td>Other Fixed Expenses</td><td>₹${formatNumber(others)}</td><td>₹${formatNumber(others / qty)}</td></tr>
-    <tr class="highlight-row"><td><b>Total Cost (excl. GST)</b></td><td><b>₹${formatNumber(totalCostsExclGST)}</b></td><td><b>₹${formatNumber(perSleeperCost)}</b></td></tr>
+    <tr class="highlight-row"><td><b>Total Cost (incl. GST)</b></td><td><b>₹${formatNumber(totalCostsExclGST + inputGST)}</b></td><td><b>₹${formatNumber((totalCostsExclGST + inputGST) / qty)}</b></td></tr>
     </table>
     </div>
 
