@@ -78,6 +78,11 @@
             background: #fff;
         }
 
+        input.invalid {
+            border-color: #e74c3c;
+            box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
+        }
+
         .button-group {
             display: flex;
             flex-wrap: wrap;
@@ -319,55 +324,64 @@
     <div class="container">
         <h1>💰 Business Tool</h1>
 
+        <div style="margin-bottom: 20px; text-align: center;">
+            <label style="font-weight: 600; color: #555;">
+                <input type="checkbox" id="autoCalcToggle" onchange="toggleAutoCalc()"> Auto-Calculate on Input Change
+            </label>
+        </div>
+
         <div class="form-grid">
             <div class="form-group">
                 <label>Auction Price per Sleeper (₹)</label>
-                <input type="number" id="auctionPrice" value="" step="0.01">
+                <input type="number" id="auctionPrice" value="" step="0.01" title="The price paid to acquire each sleeper at auction">
             </div>
 
             <div class="form-group">
                 <label>Quantity (No. of Sleepers)</label>
-                <input type="number" id="quantity" value="" step="1">
+                <input type="number" id="quantity" value="" step="1" title="Total number of sleepers being processed">
             </div>
 
             <div class="form-group">
                 <label>GST %</label>
-                <input type="number" id="gst" value="18" step="0.01">
+                <input type="number" id="gst" value="18" step="0.01" title="GST rate applied to purchases (default 18%)">
             </div>
 
             <div class="form-group">
                 <label>Transportation Cost per Sleeper (₹)</label>
-                <input type="number" id="transport" value="" step="0.01">
+                <input type="number" id="transport" value="" step="0.01" title="Cost to transport each sleeper">
             </div>
 
             <div class="form-group">
                 <label>Labour Cost per Sleeper (₹)</label>
-                <input type="number" id="labour" value="60" step="0.01">
+                <input type="number" id="labour" value="60" step="0.01" title="Labour cost for processing each sleeper (default ₹60)">
             </div>
 
             <div class="form-group">
                 <label>Land Lease Cost per Sleeper (₹)</label>
-                <input type="number" id="landLease" value="" step="0.01">
+                <input type="number" id="landLease" value="" step="0.01" title="Lease cost for land used per sleeper">
             </div>
 
             <div class="form-group">
                 <label>Other Fixed Expenses (₹)</label>
-                <input type="number" id="others" value="" step="0.01">
+                <input type="number" id="others" value="" step="0.01" title="Any additional fixed expenses">
             </div>
 
             <div class="form-group">
                 <label>Steel Weight extracted per Sleeper (kg)</label>
-                <input type="number" id="steelWeight" value="14" step="0.01">
+                <input type="number" id="steelWeight" value="14" step="0.01" title="Kilograms of steel extracted from each sleeper (default 14kg)">
             </div>
 
             <div class="form-group">
                 <label>Steel Selling Price per kg (₹, with GST)</label>
-                <input type="number" id="steelPriceWithGST" value="44" step="0.01">
+                <input type="number" id="steelPriceWithGST" value="44" step="0.01" title="Selling price per kg of steel including GST (default ₹44)">
             </div>
         </div>
 
         <div class="button-group">
             <button onclick="calculateProfit()" id="calcBtn">📊 Calculate</button>
+            <button onclick="resetInputs()">🔄 Reset</button>
+            <button onclick="saveConfig()">💾 Save Config</button>
+            <button onclick="loadConfig()">📂 Load Config</button>
             <button onclick="exportExcel()" class="export-btn">📄 Export Excel</button>
             <button onclick="exportPDF()" class="export-btn">📋 Export PDF</button>
         </div>
@@ -379,12 +393,78 @@
         function formatNumber(num) { return num.toLocaleString('en-IN', { maximumFractionDigits: 2 }); }
         let lastCalculation = {};
 
+        function resetInputs() {
+            const inputs = document.querySelectorAll('input[type="number"]');
+            inputs.forEach(input => {
+                if (input.id === 'gst') input.value = '18';
+                else if (input.id === 'labour') input.value = '60';
+                else if (input.id === 'steelWeight') input.value = '14';
+                else if (input.id === 'steelPriceWithGST') input.value = '44';
+                else input.value = '';
+                input.classList.remove('invalid');
+            });
+            document.getElementById('result').innerHTML = '';
+            lastCalculation = {};
+        }
+
+        function saveConfig() {
+            const config = {};
+            const inputs = document.querySelectorAll('input[type="number"]');
+            inputs.forEach(input => {
+                config[input.id] = input.value;
+            });
+            localStorage.setItem('sleeperProfitConfig', JSON.stringify(config));
+            alert('Configuration saved!');
+        }
+
+        function loadConfig() {
+            const config = JSON.parse(localStorage.getItem('sleeperProfitConfig'));
+            if (config) {
+                Object.keys(config).forEach(id => {
+                    const input = document.getElementById(id);
+                    if (input) input.value = config[id];
+                });
+                alert('Configuration loaded!');
+            } else {
+                alert('No saved configuration found.');
+            }
+        }
+
+        function validateInputs() {
+            const inputs = document.querySelectorAll('input[type="number"]');
+            let isValid = true;
+            inputs.forEach(input => {
+                const value = parseFloat(input.value) || 0;
+                if (input.id === 'quantity' || input.id === 'auctionPrice') {
+                    if (value <= 0) {
+                        input.classList.add('invalid');
+                        isValid = false;
+                    } else {
+                        input.classList.remove('invalid');
+                    }
+                } else if (value < 0) {
+                    input.classList.add('invalid');
+                    isValid = false;
+                } else {
+                    input.classList.remove('invalid');
+                }
+            });
+            return isValid;
+        }
+
         function calculateProfit() {
             const calcBtn = document.getElementById('calcBtn');
             calcBtn.classList.add('loading');
             calcBtn.textContent = 'Calculating';
 
             setTimeout(() => {
+                if (!validateInputs()) {
+                    alert('Please enter valid positive values for required fields (Auction Price and Quantity must be greater than 0)');
+                    calcBtn.classList.remove('loading');
+                    calcBtn.textContent = '📊 Calculate';
+                    return;
+                }
+
                 let auctionPrice = parseFloat(document.getElementById('auctionPrice').value) || 0;
                 let qty = parseFloat(document.getElementById('quantity').value) || 0;
                 let gstRate = parseFloat(document.getElementById('gst').value) / 100 || 0;
@@ -396,13 +476,6 @@
                 let others = parseFloat(document.getElementById('others').value) || 0;
                 let steelWeight = parseFloat(document.getElementById('steelWeight').value) || 0;
                 let steelPriceWithGST = parseFloat(document.getElementById('steelPriceWithGST').value) || 0;
-
-                if (qty === 0) {
-                    alert('Please enter a valid quantity');
-                    calcBtn.classList.remove('loading');
-                    calcBtn.textContent = '📊 Calculate';
-                    return;
-                }
 
                 let purchaseBase = auctionPrice * qty;
                 let inputGST = purchaseBase * gstRate;
@@ -557,7 +630,20 @@
                 doc.setFontSize(10);
                 doc.setFont(undefined, 'normal');
                 doc.text("Generated on: " + new Date().toLocaleDateString(), 20, y);
-                y += 15;
+                y += 10;
+
+                // Add summary
+                doc.setFontSize(12);
+                doc.setFont(undefined, 'bold');
+                doc.text("Summary:", 20, y);
+                y += 8;
+                doc.setFont(undefined, 'normal');
+                doc.text(`Quantity: ${formatNumber(parseFloat(document.getElementById('quantity').value))} Sleepers`, 20, y);
+                y += 6;
+                doc.text(`Profit (excl. GST): ₹${formatNumber(lastCalculation.profit)}`, 20, y);
+                y += 6;
+                doc.text(`Net Profit After GST: ₹${formatNumber(lastCalculation.netProfitAfterGST)}`, 20, y);
+                y += 10;
 
                 doc.setFontSize(12);
                 const reportData = [
@@ -611,24 +697,33 @@
         }
 
         // Auto-calculate on input change (debounced)
-        // let debounceTimer;
-        // function debounceCalculate() {
-        //     clearTimeout(debounceTimer);
-        //     debounceTimer = setTimeout(() => {
-        //         if (document.getElementById('quantity').value && 
-        //             document.getElementById('auctionPrice').value) {
-        //             calculateProfit();
-        //         }
-        //     }, 1000);
-        // }
+        let debounceTimer;
+        let autoCalcEnabled = false;
 
-        // Add event listeners for auto-calculation
-        // document.addEventListener('DOMContentLoaded', function() {
-        //     const inputs = document.querySelectorAll('input');
-        //     inputs.forEach(input => {
-        //         input.addEventListener('input', debounceCalculate);
-        //     });
-        // });
+        function debounceCalculate() {
+            if (!autoCalcEnabled) return;
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                if (document.getElementById('quantity').value && document.getElementById('auctionPrice').value) {
+                    calculateProfit();
+                }
+            }, 1000);
+        }
+
+        function toggleAutoCalc() {
+            autoCalcEnabled = document.getElementById('autoCalcToggle').checked;
+            if (autoCalcEnabled) {
+                const inputs = document.querySelectorAll('input');
+                inputs.forEach(input => {
+                    input.addEventListener('input', debounceCalculate);
+                });
+            } else {
+                const inputs = document.querySelectorAll('input');
+                inputs.forEach(input => {
+                    input.removeEventListener('input', debounceCalculate);
+                });
+            }
+        }
 
         // Prevent form submission on Enter key
         document.addEventListener('keypress', function (e) {
