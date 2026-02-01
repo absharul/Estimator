@@ -391,6 +391,13 @@
                             Apply 18% GST
                         </label>
                     </div>
+                    <div class="form-group" style="display: flex; align-items: center; padding-top: 20px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="steelWirePriceIncludesGST"
+                                style="width: auto; transform: scale(1.3);">
+                            Price includes GST
+                        </label>
+                    </div>
                 </div>
             </div>
 
@@ -413,6 +420,13 @@
                         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
                             <input type="checkbox" id="msScrapGST" style="width: auto; transform: scale(1.3);">
                             Apply 18% GST
+                        </label>
+                    </div>
+                    <div class="form-group" style="display: flex; align-items: center; padding-top: 20px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="msScrapPriceIncludesGST"
+                                style="width: auto; transform: scale(1.3);">
+                            Price includes GST
                         </label>
                     </div>
                 </div>
@@ -450,6 +464,8 @@
             // Reset checkboxes
             document.getElementById('steelWireGST').checked = true;
             document.getElementById('msScrapGST').checked = false;
+            document.getElementById('steelWirePriceIncludesGST').checked = false;
+            document.getElementById('msScrapPriceIncludesGST').checked = false;
             document.getElementById('result').innerHTML = '';
             lastCalculation = {};
         }
@@ -463,6 +479,8 @@
             // Save checkbox states
             config['steelWireGST'] = document.getElementById('steelWireGST').checked;
             config['msScrapGST'] = document.getElementById('msScrapGST').checked;
+            config['steelWirePriceIncludesGST'] = document.getElementById('steelWirePriceIncludesGST').checked;
+            config['msScrapPriceIncludesGST'] = document.getElementById('msScrapPriceIncludesGST').checked;
             localStorage.setItem('sleeperProfitConfig', JSON.stringify(config));
             alert('Configuration saved!');
         }
@@ -533,13 +551,15 @@
 
                 // Steel Wire
                 let steelWireWeight = parseFloat(document.getElementById('steelWireWeight').value) || 0;
-                let steelWirePrice = parseFloat(document.getElementById('steelWirePrice').value) || 0;
+                let steelWirePriceInput = parseFloat(document.getElementById('steelWirePrice').value) || 0;
                 let steelWireGSTEnabled = document.getElementById('steelWireGST').checked;
+                let steelWirePriceIncludesGST = document.getElementById('steelWirePriceIncludesGST').checked;
 
                 // MS Scrap
                 let msScrapWeight = parseFloat(document.getElementById('msScrapWeight').value) || 0;
-                let msScrapPrice = parseFloat(document.getElementById('msScrapPrice').value) || 0;
+                let msScrapPriceInput = parseFloat(document.getElementById('msScrapPrice').value) || 0;
                 let msScrapGSTEnabled = document.getElementById('msScrapGST').checked;
+                let msScrapPriceIncludesGST = document.getElementById('msScrapPriceIncludesGST').checked;
 
                 // Cost calculations
                 let purchaseBase = auctionPrice * qty;
@@ -549,16 +569,35 @@
                 let perSleeperCost = totalCostsExclGST / qty;
 
                 // Steel Wire Revenue
+                // If price includes GST: GST = price * gstRate, base = price - GST
+                // Example: Rs.44 with 18% GST -> GST = 7.92, base = 36.08
                 let totalSteelWireWeight = steelWireWeight * qty;
+                let steelWirePrice = steelWirePriceIncludesGST ? steelWirePriceInput * (1 - gstRate) : steelWirePriceInput;
                 let steelWireRevenueBase = steelWirePrice * totalSteelWireWeight;
-                let steelWireRevenueGST = steelWireGSTEnabled ? steelWireRevenueBase * gstRate : 0;
-                let steelWireGSTLabel = steelWireGSTEnabled ? "Yes" : "No";
+                let steelWireRevenueGST = 0;
+                if (steelWirePriceIncludesGST) {
+                    // GST is already included in price: GST = price * 18%
+                    steelWireRevenueGST = steelWirePriceInput * gstRate * totalSteelWireWeight;
+                } else if (steelWireGSTEnabled) {
+                    // Add GST on top of base price
+                    steelWireRevenueGST = steelWireRevenueBase * gstRate;
+                }
+                let steelWireGSTLabel = (steelWirePriceIncludesGST || steelWireGSTEnabled) ? "Yes" : "No";
 
                 // MS Scrap Revenue
+                // Same logic for MS Scrap
                 let totalMsScrapWeight = msScrapWeight * qty;
+                let msScrapPrice = msScrapPriceIncludesGST ? msScrapPriceInput * (1 - gstRate) : msScrapPriceInput;
                 let msScrapRevenueBase = msScrapPrice * totalMsScrapWeight;
-                let msScrapRevenueGST = msScrapGSTEnabled ? msScrapRevenueBase * gstRate : 0;
-                let msScrapGSTLabel = msScrapGSTEnabled ? "Yes" : "No";
+                let msScrapRevenueGST = 0;
+                if (msScrapPriceIncludesGST) {
+                    // GST is already included in price: GST = price * 18%
+                    msScrapRevenueGST = msScrapPriceInput * gstRate * totalMsScrapWeight;
+                } else if (msScrapGSTEnabled) {
+                    // Add GST on top of base price
+                    msScrapRevenueGST = msScrapRevenueBase * gstRate;
+                }
+                let msScrapGSTLabel = (msScrapPriceIncludesGST || msScrapGSTEnabled) ? "Yes" : "No";
 
                 // Combined Revenue
                 let totalRevenueBase = steelWireRevenueBase + msScrapRevenueBase;
@@ -572,7 +611,7 @@
                 // GST Impact on profit:
                 // - If selling with GST: Input GST is recoverable via ITC, so no impact on profit
                 // - If NOT selling with GST: Input GST cannot be claimed, it becomes a cost
-                let isSellingWithGST = steelWireGSTEnabled || msScrapGSTEnabled;
+                let isSellingWithGST = steelWireGSTEnabled || msScrapGSTEnabled || steelWirePriceIncludesGST || msScrapPriceIncludesGST;
                 let unclaimableInputGST = isSellingWithGST ? 0 : inputGST;
                 let netProfit = grossProfit - unclaimableInputGST;
 
@@ -584,8 +623,8 @@
 
                 lastCalculation = {
                     purchaseBase, labourCost, transport, landLease, others, totalCostsExclGST, perSleeperCost,
-                    totalSteelWireWeight, steelWirePrice, steelWireRevenueBase, steelWireRevenueGST, steelWireGSTEnabled,
-                    totalMsScrapWeight, msScrapPrice, msScrapRevenueBase, msScrapRevenueGST, msScrapGSTEnabled,
+                    totalSteelWireWeight, steelWirePrice, steelWirePriceInput, steelWireRevenueBase, steelWireRevenueGST, steelWireGSTEnabled, steelWirePriceIncludesGST,
+                    totalMsScrapWeight, msScrapPrice, msScrapPriceInput, msScrapRevenueBase, msScrapRevenueGST, msScrapGSTEnabled, msScrapPriceIncludesGST,
                     totalRevenueBase, totalRevenueGST, totalRevenue,
                     grossProfit, netProfit, grossProfitPerSleeper, netProfitPerSleeper, profitMarginPercent,
                     inputGST, netGSTPayable, unclaimableInputGST, isSellingWithGST, qty
@@ -611,8 +650,9 @@
     <table>
     <tr><th>Item</th><th>Total</th><th>Per kg (₹)</th></tr>
     <tr><td>Total Weight Extracted</td><td>${formatNumber(totalSteelWireWeight)} kg</td><td>-</td></tr>
+    ${steelWirePriceIncludesGST ? `<tr><td>Entered Price (GST Inclusive)</td><td>-</td><td>₹${formatNumber(steelWirePriceInput)}</td></tr>` : ''}
     <tr><td>Base Price Revenue</td><td>₹${formatNumber(steelWireRevenueBase)}</td><td>₹${formatNumber(steelWirePrice)}</td></tr>
-    <tr><td>GST Applied (18%)</td><td style="color: ${steelWireGSTEnabled ? '#2e7d32' : '#666'};">${steelWireGSTLabel} ${steelWireGSTEnabled ? '- ₹' + formatNumber(steelWireRevenueGST) : ''}</td><td>-</td></tr>
+    <tr><td>GST ${steelWirePriceIncludesGST ? 'Included' : 'Applied'} (18%)</td><td style="color: ${(steelWireGSTEnabled || steelWirePriceIncludesGST) ? '#2e7d32' : '#666'};">${steelWireGSTLabel} ${(steelWireGSTEnabled || steelWirePriceIncludesGST) ? '- ₹' + formatNumber(steelWireRevenueGST) : ''}</td><td>${steelWirePriceIncludesGST ? '₹' + formatNumber(steelWirePriceInput - steelWirePrice) : '-'}</td></tr>
     <tr class="highlight-row"><td><b>Total Steel Wire Revenue</b></td><td><b>₹${formatNumber(steelWireRevenueBase + steelWireRevenueGST)}</b></td><td>-</td></tr>
     </table>
     </div>
@@ -622,8 +662,9 @@
     <table>
     <tr><th>Item</th><th>Total</th><th>Per kg (₹)</th></tr>
     <tr><td>Total Weight Extracted</td><td>${formatNumber(totalMsScrapWeight)} kg</td><td>-</td></tr>
+    ${msScrapPriceIncludesGST ? `<tr><td>Entered Price (GST Inclusive)</td><td>-</td><td>₹${formatNumber(msScrapPriceInput)}</td></tr>` : ''}
     <tr><td>Base Price Revenue</td><td>₹${formatNumber(msScrapRevenueBase)}</td><td>₹${formatNumber(msScrapPrice)}</td></tr>
-    <tr><td>GST Applied (18%)</td><td style="color: ${msScrapGSTEnabled ? '#e65100' : '#666'};">${msScrapGSTLabel} ${msScrapGSTEnabled ? '- ₹' + formatNumber(msScrapRevenueGST) : ''}</td><td>-</td></tr>
+    <tr><td>GST ${msScrapPriceIncludesGST ? 'Included' : 'Applied'} (18%)</td><td style="color: ${(msScrapGSTEnabled || msScrapPriceIncludesGST) ? '#e65100' : '#666'};">${msScrapGSTLabel} ${(msScrapGSTEnabled || msScrapPriceIncludesGST) ? '- ₹' + formatNumber(msScrapRevenueGST) : ''}</td><td>${msScrapPriceIncludesGST ? '₹' + formatNumber(msScrapPriceInput - msScrapPrice) : '-'}</td></tr>
     <tr class="highlight-row"><td><b>Total MS Scrap Revenue</b></td><td><b>₹${formatNumber(msScrapRevenueBase + msScrapRevenueGST)}</b></td><td>-</td></tr>
     </table>
     </div>
@@ -649,7 +690,8 @@
     <tr style="background: #e3f2fd;"><td>Input GST (on Purchase)</td><td>₹${formatNumber(inputGST)}</td></tr>
     <tr style="background: #e3f2fd;"><td>Output GST (Steel Wire)</td><td>₹${formatNumber(steelWireRevenueGST)}</td></tr>
     <tr style="background: #fff3e0;"><td>Output GST (MS Scrap)</td><td>₹${formatNumber(msScrapRevenueGST)}</td></tr>
-    <tr style="background: #fffde7;"><td><b>Net GST Payable to Govt</b></td><td><b>₹${formatNumber(netGSTPayable)}</b></td></tr>
+    <tr style="background: ${netGSTPayable >= 0 ? '#fffde7' : '#e8f5e9'};"><td><b>${netGSTPayable >= 0 ? 'Net GST Payable to Govt' : 'GST Refund Claimable'}</b></td><td style="color: ${netGSTPayable >= 0 ? '#333' : '#2e7d32'}; font-weight: bold;">${netGSTPayable >= 0 ? '₹' + formatNumber(netGSTPayable) : '₹' + formatNumber(Math.abs(netGSTPayable)) + ' (Refund)'}</td></tr>
+    ${netGSTPayable < 0 ? `<tr><td colspan="2" style="font-size: 0.85rem; color: #2e7d32;">✓ Input GST exceeds Output GST - You can claim ₹${formatNumber(Math.abs(netGSTPayable))} as GST refund</td></tr>` : ''}
     ${isSellingWithGST ? `<tr><td colspan="2" style="font-size: 0.85rem; color: #666;">✓ Input GST is claimable as ITC since you are selling with GST</td></tr>` : `<tr><td colspan="2" style="font-size: 0.85rem; color: #c62828;">⚠ Input GST of ₹${formatNumber(inputGST)} is lost since you are NOT selling with GST</td></tr>`}
     </table>
     </div>
