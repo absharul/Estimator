@@ -566,19 +566,29 @@
                 let totalRevenue = totalRevenueBase + totalRevenueGST;
 
                 // Profit Calculations
-                let profit = totalRevenueBase - totalCostsExclGST;
-                let profitMarginPercent = totalRevenueBase > 0 ? (profit / totalRevenueBase) * 100 : 0;
-                let profitPerSleeperExclGST = profit / qty;
+                let grossProfit = totalRevenueBase - totalCostsExclGST;
+                let profitMarginPercent = totalRevenueBase > 0 ? (grossProfit / totalRevenueBase) * 100 : 0;
+
+                // GST Impact on profit:
+                // - If selling with GST: Input GST is recoverable via ITC, so no impact on profit
+                // - If NOT selling with GST: Input GST cannot be claimed, it becomes a cost
+                let isSellingWithGST = steelWireGSTEnabled || msScrapGSTEnabled;
+                let unclaimableInputGST = isSellingWithGST ? 0 : inputGST;
+                let netProfit = grossProfit - unclaimableInputGST;
+
+                // Net GST Payable (info only - this is paid to govt, not from your profit)
                 let netGSTPayable = totalRevenueGST - inputGST;
-                let netProfitAfterGST = profit - (netGSTPayable > 0 ? netGSTPayable : 0);
-                let profitPerSleeper = netProfitAfterGST / qty;
+
+                let grossProfitPerSleeper = grossProfit / qty;
+                let netProfitPerSleeper = netProfit / qty;
 
                 lastCalculation = {
                     purchaseBase, labourCost, transport, landLease, others, totalCostsExclGST, perSleeperCost,
                     totalSteelWireWeight, steelWirePrice, steelWireRevenueBase, steelWireRevenueGST, steelWireGSTEnabled,
                     totalMsScrapWeight, msScrapPrice, msScrapRevenueBase, msScrapRevenueGST, msScrapGSTEnabled,
                     totalRevenueBase, totalRevenueGST, totalRevenue,
-                    profit, profitPerSleeper, profitPerSleeperExclGST, profitMarginPercent, inputGST, netGSTPayable, netProfitAfterGST, qty
+                    grossProfit, netProfit, grossProfitPerSleeper, netProfitPerSleeper, profitMarginPercent,
+                    inputGST, netGSTPayable, unclaimableInputGST, isSellingWithGST, qty
                 };
 
                 document.getElementById('result').innerHTML = `
@@ -623,15 +633,24 @@
     <table>
     <tr><td>Total Revenue (Base)</td><td>₹${formatNumber(totalRevenueBase)}</td></tr>
     <tr><td>Total Revenue (with GST)</td><td>₹${formatNumber(totalRevenue)}</td></tr>
-    <tr><td>Profit (excl. GST)</td><td style="color: ${profit >= 0 ? 'green' : 'red'}; font-weight: bold;">₹${formatNumber(profit)}</td></tr>
-    <tr><td>Net Profit After GST</td><td style="color: ${netProfitAfterGST >= 0 ? 'green' : 'red'}; font-weight: bold;">₹${formatNumber(netProfitAfterGST)}</td></tr>
-    <tr><td>Profit per Sleeper (excl. GST)</td><td>₹${formatNumber(profitPerSleeperExclGST)}</td></tr>
-    <tr><td>Profit per Sleeper (after GST)</td><td>₹${formatNumber(profitPerSleeper)}</td></tr>
+    <tr><td>Total Cost (Base)</td><td>₹${formatNumber(totalCostsExclGST)}</td></tr>
+    <tr style="background: #e8f5e9;"><td><b>Gross Profit</b> (Revenue - Cost)</td><td style="color: ${grossProfit >= 0 ? 'green' : 'red'}; font-weight: bold;">₹${formatNumber(grossProfit)}</td></tr>
+    <tr><td>Gross Profit per Sleeper</td><td>₹${formatNumber(grossProfitPerSleeper)}</td></tr>
+    ${!isSellingWithGST ? `<tr style="background: #ffebee;"><td>Input GST Lost (No ITC)</td><td style="color: red;">- ₹${formatNumber(inputGST)}</td></tr>` : ''}
+    ${!isSellingWithGST ? `<tr style="background: #fff3e0;"><td><b>Net Profit</b></td><td style="color: ${netProfit >= 0 ? 'green' : 'red'}; font-weight: bold;">₹${formatNumber(netProfit)}</td></tr>` : ''}
+    ${!isSellingWithGST ? `<tr><td>Net Profit per Sleeper</td><td>₹${formatNumber(netProfitPerSleeper)}</td></tr>` : ''}
     <tr><td>Profit Margin %</td><td style="color: ${profitMarginPercent >= 0 ? 'green' : 'red'}; font-weight: bold;">${profitMarginPercent.toFixed(2)}%</td></tr>
-    <tr style="background: #e3f2fd;"><td>Input GST (ITC)</td><td>₹${formatNumber(inputGST)}</td></tr>
+    </table>
+    </div>
+
+    <h3>💰 GST Details</h3>
+    <div class="table-container">
+    <table>
+    <tr style="background: #e3f2fd;"><td>Input GST (on Purchase)</td><td>₹${formatNumber(inputGST)}</td></tr>
     <tr style="background: #e3f2fd;"><td>Output GST (Steel Wire)</td><td>₹${formatNumber(steelWireRevenueGST)}</td></tr>
     <tr style="background: #fff3e0;"><td>Output GST (MS Scrap)</td><td>₹${formatNumber(msScrapRevenueGST)}</td></tr>
-    <tr style="background: #fffde7;"><td><b>Net GST Payable</b></td><td><b>₹${formatNumber(netGSTPayable)}</b></td></tr>
+    <tr style="background: #fffde7;"><td><b>Net GST Payable to Govt</b></td><td><b>₹${formatNumber(netGSTPayable)}</b></td></tr>
+    ${isSellingWithGST ? `<tr><td colspan="2" style="font-size: 0.85rem; color: #666;">✓ Input GST is claimable as ITC since you are selling with GST</td></tr>` : `<tr><td colspan="2" style="font-size: 0.85rem; color: #c62828;">⚠ Input GST of ₹${formatNumber(inputGST)} is lost since you are NOT selling with GST</td></tr>`}
     </table>
     </div>
     `;
@@ -680,15 +699,17 @@
                     ["PROFIT & GST SUMMARY"],
                     ["Total Revenue (Base)", lastCalculation.totalRevenueBase, "-"],
                     ["Total Revenue (with GST)", lastCalculation.totalRevenue, "-"],
-                    ["Profit (excl. GST)", lastCalculation.profit, "-"],
-                    ["Net Profit After GST", lastCalculation.netProfitAfterGST, "-"],
-                    ["Profit per Sleeper (excl. GST)", lastCalculation.profitPerSleeperExclGST, "-"],
-                    ["Profit per Sleeper (after GST)", lastCalculation.profitPerSleeper, "-"],
+                    ["Gross Profit", lastCalculation.grossProfit, lastCalculation.grossProfitPerSleeper],
+                    ["Input GST Lost (if not selling with GST)", lastCalculation.unclaimableInputGST, "-"],
+                    ["Net Profit", lastCalculation.netProfit, lastCalculation.netProfitPerSleeper],
                     ["Profit Margin %", lastCalculation.profitMarginPercent.toFixed(2) + "%", "-"],
-                    ["Input GST (ITC)", lastCalculation.inputGST, "-"],
+                    [],
+                    ["GST DETAILS"],
+                    ["Input GST (on Purchase)", lastCalculation.inputGST, "-"],
                     ["Output GST (Steel Wire)", lastCalculation.steelWireRevenueGST, "-"],
                     ["Output GST (MS Scrap)", lastCalculation.msScrapRevenueGST, "-"],
-                    ["Net GST Payable", lastCalculation.netGSTPayable, "-"]
+                    ["Net GST Payable to Govt", lastCalculation.netGSTPayable, "-"],
+                    ["ITC Claimable?", lastCalculation.isSellingWithGST ? "Yes" : "No", "-"]
                 ];
                 let wb = XLSX.utils.book_new();
                 let ws = XLSX.utils.aoa_to_sheet(ws_data);
@@ -777,17 +798,19 @@
                     ["Profit Summary", ""],
                     ["Total Revenue (Base)", "Rs." + formatNumber(lastCalculation.totalRevenueBase)],
                     ["Total Revenue (with GST)", "Rs." + formatNumber(lastCalculation.totalRevenue)],
-                    ["Profit (excl. GST)", "Rs." + formatNumber(lastCalculation.profit)],
-                    ["Net Profit After GST", "Rs." + formatNumber(lastCalculation.netProfitAfterGST)],
-                    ["Profit per Sleeper (excl. GST)", "Rs." + formatNumber(lastCalculation.profitPerSleeperExclGST)],
-                    ["Profit per Sleeper (after GST)", "Rs." + formatNumber(lastCalculation.profitPerSleeper)],
+                    ["Gross Profit", "Rs." + formatNumber(lastCalculation.grossProfit)],
+                    ["Gross Profit per Sleeper", "Rs." + formatNumber(lastCalculation.grossProfitPerSleeper)],
+                    ["Input GST Lost (if any)", "Rs." + formatNumber(lastCalculation.unclaimableInputGST)],
+                    ["Net Profit", "Rs." + formatNumber(lastCalculation.netProfit)],
+                    ["Net Profit per Sleeper", "Rs." + formatNumber(lastCalculation.netProfitPerSleeper)],
                     ["Profit Margin", lastCalculation.profitMarginPercent.toFixed(2) + "%"],
                     ["", ""],
                     ["GST Summary", ""],
-                    ["Input GST (ITC)", "Rs." + formatNumber(lastCalculation.inputGST)],
+                    ["Input GST (on Purchase)", "Rs." + formatNumber(lastCalculation.inputGST)],
                     ["Output GST (Steel Wire)", "Rs." + formatNumber(lastCalculation.steelWireRevenueGST)],
                     ["Output GST (MS Scrap)", "Rs." + formatNumber(lastCalculation.msScrapRevenueGST)],
-                    ["Net GST Payable", "Rs." + formatNumber(lastCalculation.netGSTPayable)]
+                    ["Net GST Payable to Govt", "Rs." + formatNumber(lastCalculation.netGSTPayable)],
+                    ["ITC Claimable?", lastCalculation.isSellingWithGST ? "Yes" : "No"]
                 ];
 
                 reportData.forEach(([key, val]) => {
